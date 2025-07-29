@@ -45,7 +45,7 @@ jobs:
       run: |
         mkdir -p ~/android-sdk
         cd ~/android-sdk
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        wget https://mirrors.cloud.tencent.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
         unzip cmdline-tools.zip -d cmdline-tools
         mv cmdline-tools/cmdline-tools cmdline-tools/latest
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
@@ -55,11 +55,13 @@ jobs:
     - name: Accept licenses and install packages
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0" --no_https --proxy=http --proxy_host=mirrors.cloud.tencent.com --proxy_port=80
     
     - name: Build with Buildozer
       run: |
-            # 使用国内镜像源
-            sed -i 's#https://dl.google.com#https://mirrors.cloud.tencent.com#g' ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager
-            # 跳过 init 步骤，直接构建
-            buildozer -v android debug
+        # 设置国内pypi镜像
+        pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
+        
+        # 构建时使用清华镜像
+        sed -i 's#https://dl.google.com#https://mirrors.tuna.tsinghua.edu.cn/git#g' buildozer.spec
+        buildozer -v android debug
