@@ -60,11 +60,21 @@ jobs:
         echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > $ANDROID_HOME/licenses/android-sdk-license
         echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
         
-        # 安装必要组件（使用新版构建工具）
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+        # 安装必要组件（同时安装34和36版本）
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+          "platform-tools" \
+          "platforms;android-34" \
+          "build-tools;34.0.0" \
+          "build-tools;36.0.0"
         
         # 验证安装
-        ls $ANDROID_HOME/build-tools/34.0.0/aidl
+        ls $ANDROID_HOME/build-tools/36.0.0/aidl
+    
+    - name: Configure Buildozer
+      run: |
+        # 强制指定build-tools版本
+        sed -i '/^\[app\]$/a android.build_tools_version = 34.0.0' buildozer.spec
+        cat buildozer.spec
     
     - name: Build with Buildozer
       run: |
