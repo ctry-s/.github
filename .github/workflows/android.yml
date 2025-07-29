@@ -35,20 +35,26 @@ jobs:
           libffi-dev \
           libbz2-dev \
           unzip \
-          wget \
-          ca-certificates
+          wget
     
-    - name: Setup Android SDK (Multi-source Fallback)
+    - name: Install Buildozer with dependencies
+      run: |
+        # 设置清华PyPI镜像（可选）
+        python -m pip install --upgrade pip
+        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple || true
+        
+        # 全局安装Buildozer
+        sudo pip install --no-cache-dir Cython==0.29.36 virtualenv buildozer
+        
+        # 验证安装
+        echo "Buildozer path: $(which buildozer)"
+        buildozer --version
+    
+    - name: Setup Android SDK
       run: |
         mkdir -p ~/android-sdk
         cd ~/android-sdk
-        
-        # 尝试多个镜像源（自动回退）
-        (wget https://mirrors.bfsu.edu.cn/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && echo "BFSU mirror success") || \
-        (wget https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && echo "Tsinghua mirror success") || \
-        (wget https://mirrors.cloud.tencent.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && echo "Tencent mirror success") || \
-        (wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && echo "Google official success")
-        
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
         unzip cmdline-tools.zip -d cmdline-tools
         mv cmdline-tools/cmdline-tools cmdline-tools/latest
         
@@ -56,20 +62,7 @@ jobs:
         echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
         echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
     
-    - name: Configure Android SDK
-      run: |
-        mkdir -p ~/.android
-        echo '### User Sources for Android SDK Manager' > ~/.android/repositories.cfg
-        echo 'count=0' >> ~/.android/repositories.cfg
-        
-        # 使用多源更新
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --verbose \
-          "platform-tools" \
-          "platforms;android-34" \
-          "build-tools;34.0.0" \
-          "cmdline-tools;latest"
-    
     - name: Build with Buildozer
       run: |
-        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-        buildozer -v android debug
+        # 显式使用全局路径
+        /usr/local/bin/buildozer -v android debug
