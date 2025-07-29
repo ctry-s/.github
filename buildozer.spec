@@ -409,6 +409,14 @@ ios.codesign.allowed = false
 
 [buildozer]
 
+# 强制使用新NDK
+android.ndk_path = /home/admin-py/.buildozer/android/platform/android-ndk-r26b
+android.ndk_version = 26.1.10909125
+
+# 降低API级别（兼容性更好）
+android.api = 29
+android.minapi = 21
+
 # (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
 log_level = 2
 
@@ -460,11 +468,4 @@ warn_on_root = 1
 #buildozer --profile demo android debug
 
 
-[buildozer]
-# 强制使用新NDK
-android.ndk_path = /home/admin-py/.buildozer/android/platform/android-ndk-r26b
-android.ndk_version = 26.1.10909125
 
-# 降低API级别（兼容性更好）
-android.api = 29
-android.minapi = 21
