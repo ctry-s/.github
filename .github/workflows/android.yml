@@ -20,30 +20,41 @@ jobs:
     
     - name: Install dependencies
       run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          python3-pip \
+          build-essential \
+          openjdk-11-jdk \
+          zlib1g-dev \
+          libncurses5-dev \
+          libgdbm-dev \
+          libnss3-dev \
+          libssl-dev \
+          libsqlite3-dev \
+          libreadline-dev \
+          libffi-dev \
+          libbz2-dev
         python -m pip install --upgrade pip
         pip install buildozer cython
     
-    - name: Set up Java with Android SDK
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-        cache: 'gradle'
-        android: true
-    
-    - name: Setup Android SDK Path
+    - name: Setup Android SDK
       run: |
-        echo "ANDROID_HOME=/opt/android/sdk" >> $GITHUB_ENV
+        mkdir -p ~/android-sdk
+        cd ~/android-sdk
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        unzip cmdline-tools.zip -d cmdline-tools
+        mv cmdline-tools/cmdline-tools cmdline-tools/latest
+        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
         echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
         echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
-        echo "$ANDROID_HOME/build-tools/36.0.0" >> $GITHUB_PATH
     
-    - name: Install Build-Tools and Accept Licenses
+    - name: Accept licenses and install packages
       run: |
-        yes | sdkmanager --licenses || true
-        yes | sdkmanager --update || true
-        yes | sdkmanager "build-tools;36.0.0"
-        yes | sdkmanager "platforms;android-33"
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
     
     - name: Build with Buildozer
-      run: buildozer -v android debug
+      run: |
+        buildozer init
+        sed -i 's#https://dl.google.com#https://mirrors.cloud.tencent.com#g' ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager
+        buildozer -v android debug
