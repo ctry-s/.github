@@ -23,24 +23,27 @@ jobs:
         python -m pip install --upgrade pip
         pip install buildozer cython
     
-    - name: Set up Android SDK environment
-      run: |
-        echo "export ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-        echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/build-tools/36.0.0" >> $GITHUB_ENV
+    - name: Set up Java with Android SDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        cache: 'gradle'
+        android: true
     
-    - name: Accept Android SDK licenses
+    - name: Setup Android SDK Path
+      run: |
+        echo "ANDROID_HOME=/opt/android/sdk" >> $GITHUB_ENV
+        echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+        echo "$ANDROID_HOME/build-tools/36.0.0" >> $GITHUB_PATH
+    
+    - name: Install Build-Tools and Accept Licenses
       run: |
         yes | sdkmanager --licenses || true
         yes | sdkmanager --update || true
-    
-    - name: Install Build-Tools 36
-      run: sdkmanager "build-tools;36.0.0"
+        yes | sdkmanager "build-tools;36.0.0"
+        yes | sdkmanager "platforms;android-33"
     
     - name: Build with Buildozer
       run: buildozer -v android debug
-
-    - name: Cache Android SDK
-      uses: actions/cache@v3
-      with:
-        path: /usr/local/lib/android/sdk
-        key: ${{ runner.os }}-android-sdk-${{ hashFiles('buildozer.spec') }}
