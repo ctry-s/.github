@@ -120,32 +120,41 @@ jobs:
       
           echo "所有目标包均可用 ✅"
 
-      # 7. 安装Android构建必需组件（包含AIDL工具）
-      - name: Install Android Build Tools and Platform
+      # 7. 安装 Android 构建必需包（清晰命名 + 详细验证）
+      - name: Install required Android packages
         run: |
-          # 安装指定版本的Build-Tools（包含AIDL）、平台和工具
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
-            "platform-tools" \           # 包含adb等工具
-            "platforms;android-34" \      # 对应Android 14平台
-            "build-tools;34.0.0" \        # 包含AIDL的构建工具
-            "cmdline-tools;latest"        # 最新命令行工具
+          PACKAGES=(
+            "platform-tools"
+            "platforms;android-34"
+            "build-tools;34.0.0"
+            "cmdline-tools;latest"
+          )
+          INSTALL_COMMAND="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install"
+          for PKG in "${PACKAGES[@]}"; do
+            INSTALL_COMMAND+=" \"$PKG\""
+          done
+          echo "开始安装 Android 必需包：${PACKAGES[*]}"
+          $INSTALL_COMMAND --verbose
 
-          # 验证Build-Tools安装（关键：确认AIDL存在）
-          echo "验证Build-Tools 34.0.0安装目录："
-          ls -la $ANDROID_HOME/build-tools/34.0.0/
-          
-          # 检查AIDL是否存在，不存在则报错终止
-          if [ ! -f "$ANDROID_HOME/build-tools/34.0.0/aidl" ]; then
-            echo "错误：AIDL工具未找到！Build-Tools安装失败"
+          echo "验证安装结果："
+          if [ ! -d "$ANDROID_HOME/build-tools/34.0.0" ]; then
+            echo "错误：build-tools;34.0.0 安装失败"
             exit 1
           fi
+          if [ ! -d "$ANDROID_HOME/platforms/android-34" ]; then
+            echo "错误：platforms;android-34 安装失败"
+            exit 1
+          fi
+          if [ ! -f "$ANDROID_HOME/build-tools/34.0.0/aidl" ]; then
+            echo "错误：AIDL工具未找到！"
+            exit 1
+          fi
+          echo "✅ 所有必需包安装成功"
 
       # 8. 修复AIDL执行权限（避免"权限不足"错误）
       - name: Fix AIDL executable permissions
         run: |
-          # 赋予AIDL工具执行权限
           chmod +x $HOME/android-sdk/build-tools/34.0.0/aidl
-          # 验证权限是否生效
           echo "AIDL权限状态："
           ls -l $HOME/android-sdk/build-tools/34.0.0/aidl
 
