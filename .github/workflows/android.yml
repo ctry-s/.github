@@ -24,7 +24,7 @@ jobs:
         sudo apt-get install -y \
           python3-pip \
           build-essential \
-          openjdk-11-jdk \
+          openjdk-17-jdk \
           zlib1g-dev \
           libncurses5-dev \
           libgdbm-dev \
@@ -37,45 +37,46 @@ jobs:
           unzip \
           wget
     
-    - name: Install Python packages
-      run: |
-        python -m pip install --upgrade pip
-        pip install buildozer cython
-    
-    - name: Setup Android SDK (Tsinghua Mirror)
+    - name: Setup Android SDK
       run: |
         mkdir -p ~/android-sdk
         cd ~/android-sdk
-        # 使用清华镜像下载命令行工具
-        wget https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        
+        # 使用最新版命令行工具（2023年12月版）
+        wget https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-10406996_latest.zip -O cmdline-tools.zip
+        
+        # 备用镜像源（如果清华源失效）
+        # wget https://mirrors.cloud.tencent.com/android/repository/commandlinetools-linux-10406996_latest.zip -O cmdline-tools.zip || \
+        # wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O cmdline-tools.zip
+        
         unzip cmdline-tools.zip -d cmdline-tools
         mv cmdline-tools/cmdline-tools cmdline-tools/latest
+        
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
         echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
         echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
     
-    - name: Accept licenses and install packages
+    - name: Configure Android SDK
       run: |
-        # 设置清华镜像
         mkdir -p ~/.android
         echo '### User Sources for Android SDK Manager' > ~/.android/repositories.cfg
         echo 'count=0' >> ~/.android/repositories.cfg
         
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --verbose
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+        # 使用国内镜像更新
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --verbose --channel=0 \
           --no_https \
           --proxy=http \
           --proxy_host=mirrors.tuna.tsinghua.edu.cn \
           --proxy_port=80 \
           "platform-tools" \
-          "platforms;android-33" \
-          "build-tools;34.0.0"
+          "platforms;android-34" \
+          "build-tools;34.0.0" \
+          "cmdline-tools;latest"
     
     - name: Build with Buildozer
       run: |
-        # 设置国内PyPI镜像
+        # 设置全局镜像
         pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
         
-        # 构建时使用国内镜像
-        sed -i 's#https://dl.google.com#https://mirrors.tuna.tsinghua.edu.cn/git#g' buildozer.spec || true
-        buildozer -v android debug
+        # 构建配置
+        buildozer -v android debug 2>&1 | tee build.log
