@@ -35,19 +35,19 @@ jobs:
           libffi-dev \
           libbz2-dev \
           unzip \
-          wget
+          wget \
+          ca-certificates
     
-    - name: Setup Android SDK
+    - name: Setup Android SDK (Multi-source Fallback)
       run: |
         mkdir -p ~/android-sdk
         cd ~/android-sdk
         
-        # 使用最新版命令行工具（2023年12月版）
-        wget https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-10406996_latest.zip -O cmdline-tools.zip
-        
-        # 备用镜像源（如果清华源失效）
-        # wget https://mirrors.cloud.tencent.com/android/repository/commandlinetools-linux-10406996_latest.zip -O cmdline-tools.zip || \
-        # wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O cmdline-tools.zip
+        # 尝试多个镜像源（自动回退）
+        (wget https://mirrors.bfsu.edu.cn/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && echo "BFSU mirror success") || \
+        (wget https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && echo "Tsinghua mirror success") || \
+        (wget https://mirrors.cloud.tencent.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && echo "Tencent mirror success") || \
+        (wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && echo "Google official success")
         
         unzip cmdline-tools.zip -d cmdline-tools
         mv cmdline-tools/cmdline-tools cmdline-tools/latest
@@ -62,12 +62,8 @@ jobs:
         echo '### User Sources for Android SDK Manager' > ~/.android/repositories.cfg
         echo 'count=0' >> ~/.android/repositories.cfg
         
-        # 使用国内镜像更新
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --verbose --channel=0 \
-          --no_https \
-          --proxy=http \
-          --proxy_host=mirrors.tuna.tsinghua.edu.cn \
-          --proxy_port=80 \
+        # 使用多源更新
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --verbose \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0" \
@@ -75,8 +71,5 @@ jobs:
     
     - name: Build with Buildozer
       run: |
-        # 设置全局镜像
         pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-        
-        # 构建配置
-        buildozer -v android debug 2>&1 | tee build.log
+        buildozer -v android debug
