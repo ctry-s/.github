@@ -78,12 +78,12 @@ jobs:
     
     - name: Configure Buildozer
       run: |
-        # 确保只存在一个[buildozer]段
-        sed -i '/^\[buildozer\]/,/^\[/ { /^\[buildozer\]/d; /^\[/!d }' buildozer.spec
-        echo -e "\n[buildozer]\nandroid.build_tools_version = 34.0.0\nandroid.accept_sdk_license = True\nandroid.sdk_dir = $HOME/android-sdk" >> buildozer.spec
-        
-        # 禁用自动构建工具检测
-        echo -e "\n[app]\nandroid.ignore_build_tools_version = True" >> buildozer.spec
+        # 在 [app] 和 [buildozer] 段中正确修改字段
+        sed -i 's/^android.build_tools_version =.*/android.build_tools_version = 34.0.0/' buildozer.spec
+        sed -i 's/^android.accept_sdk_license =.*/android.accept_sdk_license = True/' buildozer.spec
+        sed -i 's|^android.sdk_dir =.*|android.sdk_dir = '"$HOME"'/android-sdk|' buildozer.spec
+        sed -i 's/^android.ignore_build_tools_version =.*/android.ignore_build_tools_version = True/' buildozer.spec
+
         
         cat buildozer.spec
     
