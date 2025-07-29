@@ -19,8 +19,8 @@ jobs:
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'  # 缓存依赖，加速构建
+          python-version: '3.11'    
+          cache: ''  # 禁用依赖缓存，避免检测依赖文件
 
       # 3. 安装系统依赖（包括Java和构建工具）
       - name: Install system dependencies
