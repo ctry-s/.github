@@ -53,35 +53,42 @@ jobs:
         echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
         echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
     
-    - name: Accept licenses and install packages
+    - name: Accept ALL Android licenses
       run: |
         mkdir -p $ANDROID_HOME/licenses
-        echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-license
-        echo -e "\nd56f5187479451eabf01fb78af6dfcb131a6481e" > $ANDROID_HOME/licenses/android-sdk-preview-license
+        # 接受所有可能的许可证书
+        echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55\n84831b9409646a918e30573bab4c9c91346d8abd\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n33b6a2b64607f17b3f689e6463ab23d242b4a6a5" > $ANDROID_HOME/licenses/android-sdk-license
+        echo -e "\n601085b94cd77f0b54ff86406957099ebe79c4d6" > $ANDROID_HOME/licenses/android-sdk-preview-license
+        echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-arm-dbt-license
         
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+        # 强制接受所有许可
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --verbose
+    
+    - name: Install required packages
+      run: |
+        # 安装指定版本避免自动选择
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0" \
-          "build-tools;33.0.2"
+          "cmdline-tools;latest"
         
-        ls $ANDROID_HOME/build-tools/34.0.0/aidl || ls $ANDROID_HOME/build-tools/33.0.2/aidl
+        # 验证安装
+        ls $ANDROID_HOME/build-tools/34.0.0/aidl
     
     - name: Configure Buildozer
       run: |
-        # 先删除所有重复的[buildozer]段
+        # 确保只存在一个[buildozer]段
         sed -i '/^\[buildozer\]/,/^\[/ { /^\[buildozer\]/d; /^\[/!d }' buildozer.spec
+        echo -e "\n[buildozer]\nandroid.build_tools_version = 34.0.0\nandroid.accept_sdk_license = True\nandroid.sdk_dir = $HOME/android-sdk" >> buildozer.spec
         
-        # 添加唯一的[buildozer]配置
-        if ! grep -q "^\[buildozer\]" buildozer.spec; then
-          echo -e "\n[buildozer]\nandroid.build_tools_version = 34.0.0\nandroid.accept_sdk_license = True\nandroid.sdk_dir = $HOME/android-sdk" >> buildozer.spec
-        else
-          sed -i '/^\[buildozer\]/a android.build_tools_version = 34.0.0\nandroid.accept_sdk_license = True\nandroid.sdk_dir = $HOME/android-sdk' buildozer.spec
-        fi
+        # 禁用自动构建工具检测
+        echo -e "\n[app]\nandroid.ignore_build_tools_version = True" >> buildozer.spec
         
         cat buildozer.spec
     
     - name: Build with Buildozer
       run: |
+        # 完全清理并重建
         rm -rf ~/.buildozer
         buildozer -v android debug
