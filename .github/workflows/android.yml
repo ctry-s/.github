@@ -55,36 +55,33 @@ jobs:
     
     - name: Accept licenses and install packages
       run: |
-        # 确保许可文件被正确写入
         mkdir -p $ANDROID_HOME/licenses
         echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-license
         echo -e "\nd56f5187479451eabf01fb78af6dfcb131a6481e" > $ANDROID_HOME/licenses/android-sdk-preview-license
         
-        # 强制安装所有可能需要的版本
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
           "platform-tools" \
           "platforms;android-34" \
-          "build-tools;30.0.3" \
-          "build-tools;31.0.0" \
-          "build-tools;32.0.0" \
-          "build-tools;33.0.2" \
           "build-tools;34.0.0" \
-          "build-tools;36.0.0"
+          "build-tools;33.0.2"
         
-        # 验证安装
-        ls $ANDROID_HOME/build-tools/*/aidl
+        ls $ANDROID_HOME/build-tools/34.0.0/aidl || ls $ANDROID_HOME/build-tools/33.0.2/aidl
     
     - name: Configure Buildozer
       run: |
-        # 强制使用34.0.0版本并完全禁用自动检测
-        echo -e "\n[buildozer]\nandroid.build_tools_version = 34.0.0" >> buildozer.spec
-        sed -i 's/^android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
-        sed -i '/^android.sdk_dir = /d' buildozer.spec
-        echo "android.sdk_dir = $HOME/android-sdk" >> buildozer.spec
+        # 先删除所有重复的[buildozer]段
+        sed -i '/^\[buildozer\]/,/^\[/ { /^\[buildozer\]/d; /^\[/!d }' buildozer.spec
+        
+        # 添加唯一的[buildozer]配置
+        if ! grep -q "^\[buildozer\]" buildozer.spec; then
+          echo -e "\n[buildozer]\nandroid.build_tools_version = 34.0.0\nandroid.accept_sdk_license = True\nandroid.sdk_dir = $HOME/android-sdk" >> buildozer.spec
+        else
+          sed -i '/^\[buildozer\]/a android.build_tools_version = 34.0.0\nandroid.accept_sdk_license = True\nandroid.sdk_dir = $HOME/android-sdk' buildozer.spec
+        fi
+        
         cat buildozer.spec
     
     - name: Build with Buildozer
       run: |
-        # 强制清理并重建
         rm -rf ~/.buildozer
         buildozer -v android debug
