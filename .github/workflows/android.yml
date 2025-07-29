@@ -37,18 +37,9 @@ jobs:
           unzip \
           wget
     
-    - name: Install Buildozer with dependencies
+    - name: Install Buildozer
       run: |
-        # 设置清华PyPI镜像（可选）
-        python -m pip install --upgrade pip
-        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple || true
-        
-        # 全局安装Buildozer
-        sudo pip install --no-cache-dir Cython==0.29.36 virtualenv buildozer
-        
-        # 验证安装
-        echo "Buildozer path: $(which buildozer)"
-        buildozer --version
+        sudo pip install --no-cache-dir Cython==0.29.36 buildozer
     
     - name: Setup Android SDK
       run: |
@@ -62,7 +53,19 @@ jobs:
         echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
         echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
     
+    - name: Accept licenses and install packages
+      run: |
+        # 预先创建licenses目录
+        mkdir -p $ANDROID_HOME/licenses
+        echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > $ANDROID_HOME/licenses/android-sdk-license
+        echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+        
+        # 安装必要组件（使用新版构建工具）
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+        
+        # 验证安装
+        ls $ANDROID_HOME/build-tools/34.0.0/aidl
+    
     - name: Build with Buildozer
       run: |
-        # 显式使用全局路径
-        /usr/local/bin/buildozer -v android debug
+        buildozer -v android debug
