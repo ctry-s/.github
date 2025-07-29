@@ -1,4 +1,4 @@
-name: Build Android App
+name: Build Android App with Buildozer
 
 on:
   push:
@@ -8,102 +8,154 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # 使用Ubuntu环境，兼容Android SDK
 
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          openjdk-17-jdk \
-          zlib1g-dev \
-          libncurses5-dev \
-          libgdbm-dev \
-          libnss3-dev \
-          libssl-dev \
-          libsqlite3-dev \
-          libreadline-dev \
-          libffi-dev \
-          libbz2-dev \
-          unzip \
-          wget
-    
-    - name: Install Buildozer
-      run: |
-        sudo pip install --no-cache-dir Cython==0.29.36 buildozer
-    
-    - name: Setup Android SDK
-      run: |
-        mkdir -p ~/android-sdk
-        cd ~/android-sdk
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip -d cmdline-tools
-        mv cmdline-tools/cmdline-tools cmdline-tools/latest
-        
-        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-        echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-        echo "ANDROID_NDK_ROOT=$HOME/android-sdk/ndk-bundle" >> $GITHUB_ENV
-        echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-    
-    - name: Accept ALL Android licenses
-      run: |
-        mkdir -p $ANDROID_HOME/licenses
-        echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55\n84831b9409646a918e30573bab4c9c91346d8abd\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n33b6a2b64607f17b3f689e6463ab23d242b4a6a5" > $ANDROID_HOME/licenses/android-sdk-license
-        echo -e "\n601085b94cd77f0b54ff86406957099ebe79c4d6" > $ANDROID_HOME/licenses/android-sdk-preview-license
-        echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-arm-dbt-license
-        
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --verbose
-    
-    - name: Install required packages
-      run: |
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
-          "platform-tools" \
-          "platforms;android-34" \
-          "build-tools;34.0.0" \
-          "cmdline-tools;latest" \
-          "ndk;25.2.9519653"
-        
-        # 创建 NDK 软链接
-        mkdir -p $ANDROID_HOME/ndk-bundle
-        ln -s $ANDROID_HOME/ndk/25.2.9519653/* $ANDROID_HOME/ndk-bundle/
-        
-        # 验证安装
-        ls -la $ANDROID_HOME/build-tools/34.0.0
-        $ANDROID_HOME/build-tools/34.0.0/aidl --version
-    
-    - name: Setup Android Environment
-      run: |
-        echo "$HOME/android-sdk/build-tools/34.0.0" >> $GITHUB_PATH
-        
-        # 验证路径
-        echo "PATH: $PATH"
-        echo "ANDROID_HOME: $ANDROID_HOME"
-        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
-        echo "ANDROID_NDK_ROOT: $ANDROID_NDK_ROOT"
-    
-    - name: Configure Buildozer
-      run: |
-        sed -i 's/^android.build_tools_version =.*/android.build_tools_version = 34.0.0/' buildozer.spec
-        sed -i 's/^android.sdk_version =.*/android.sdk_version = 34/' buildozer.spec
-        sed -i 's/^android.accept_sdk_license =.*/android.accept_sdk_license = True/' buildozer.spec
-        sed -i 's|^android.sdk_dir =.*|android.sdk_dir = '"$HOME"'/android-sdk|' buildozer.spec
-        sed -i 's|^android.ndk_path =.*|android.ndk_path = '"$HOME"'/android-sdk/ndk-bundle|' buildozer.spec
-        sed -i 's/^android.ignore_build_tools_version =.*/android.ignore_build_tools_version = False/' buildozer.spec
-        
-        # 打印配置用于调试
-        cat buildozer.spec
-    
-    - name: Build with Buildozer
-      run: |
-        # 完全清理并重建
-        rm -rf ~/.buildozer
-        buildozer -v android debug
+      # 1. 拉取代码仓库
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 配置Python环境（Buildozer依赖）
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'  # 缓存依赖，加速构建
+
+      # 3. 安装系统依赖（包括Java和构建工具）
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          # 安装Android构建必需的系统工具和Java 17（Android SDK要求）
+          sudo apt-get install -y \
+            build-essential \
+            openjdk-17-jdk \
+            zlib1g-dev \
+            libncurses5-dev \
+            libgdbm-dev \
+            libnss3-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            libreadline-dev \
+            libffi-dev \
+            libbz2-dev \
+            unzip \
+            wget
+
+      # 4. 安装Buildozer和Cython（用于打包Python应用）
+      - name: Install Buildozer and Cython
+        run: |
+          python -m pip install --upgrade pip
+          # 指定Cython版本以避免兼容性问题
+          pip install --no-cache-dir Cython==0.29.36 buildozer
+
+      # 5. 手动安装Android SDK（解决sdkmanager命令找不到问题）
+      - name: Install Android SDK
+        run: |
+          # 创建SDK目录
+          mkdir -p $HOME/android-sdk
+          cd $HOME/android-sdk
+
+          # 下载Android命令行工具（包含sdkmanager）
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d cmdline-tools  # 静默解压
+          # 重命名目录以符合SDK默认结构（cmdline-tools/latest）
+          mv cmdline-tools/cmdline-tools cmdline-tools/latest
+
+          # 配置环境变量（后续步骤可直接使用sdkmanager）
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+
+      # 6. 接受Android SDK许可证（避免手动确认）
+      - name: Accept Android SDK licenses
+        run: |
+          # 创建许可证目录
+          mkdir -p $ANDROID_HOME/licenses
+          # 写入默认许可证文件（覆盖常见许可）
+          echo -e "8933bad161af4178b1185d1a37fbf41ea5269c55\n84831b9409646a918e30573bab4c9c91346d8abd\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n33b6a2b64607f17b3f689e6463ab23d242b4a6a5" > $ANDROID_HOME/licenses/android-sdk-license
+          echo -e "601085b94cd77f0b54ff86406957099ebe79c4d6" > $ANDROID_HOME/licenses/android-sdk-preview-license
+
+          # 强制接受所有许可证（--verbose用于调试）
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --verbose
+
+      # 7. 安装Android构建必需组件（包含AIDL工具）
+      - name: Install Android Build Tools and Platform
+        run: |
+          # 安装指定版本的Build-Tools（包含AIDL）、平台和工具
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+            "platform-tools" \           # 包含adb等工具
+            "platforms;android-34" \      # 对应Android 14平台
+            "build-tools;34.0.0" \        # 包含AIDL的构建工具
+            "cmdline-tools;latest"        # 最新命令行工具
+
+          # 验证Build-Tools安装（关键：确认AIDL存在）
+          echo "验证Build-Tools 34.0.0安装目录："
+          ls -la $ANDROID_HOME/build-tools/34.0.0/
+          
+          # 检查AIDL是否存在，不存在则报错终止
+          if [ ! -f "$ANDROID_HOME/build-tools/34.0.0/aidl" ]; then
+            echo "错误：AIDL工具未找到！Build-Tools安装失败"
+            exit 1
+          fi
+
+      # 8. 修复AIDL执行权限（避免"权限不足"错误）
+      - name: Fix AIDL executable permissions
+        run: |
+          # 赋予AIDL工具执行权限
+          chmod +x $HOME/android-sdk/build-tools/34.0.0/aidl
+          # 验证权限是否生效
+          echo "AIDL权限状态："
+          ls -l $HOME/android-sdk/build-tools/34.0.0/aidl
+
+      # 9. 配置Android环境变量（确保工具可全局调用）
+      - name: Setup Android environment variables
+        run: |
+          # 将Android工具路径添加到系统PATH
+          echo "$HOME/android-sdk/build-tools/34.0.0" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+
+          # 验证AIDL可执行性（替代--version，避免版本参数问题）
+          echo "验证AIDL工具是否可用："
+          if $HOME/android-sdk/build-tools/34.0.0/aidl --help >/dev/null 2>&1; then
+            echo "✅ AIDL工具验证通过"
+          else
+            echo "❌ 错误：AIDL工具无法执行"
+            exit 1
+          fi
+
+      # 10. 配置Buildozer（指定SDK路径和版本）
+      - name: Configure Buildozer spec
+        run: |
+          # 修改buildozer.spec配置（根据实际项目调整）
+          if [ -f "buildozer.spec" ]; then
+            # 指定Android SDK路径（与前面配置一致）
+            sed -i "s|^android.sdk_dir =.*|android.sdk_dir = $HOME/android-sdk|" buildozer.spec
+            # 指定Build-Tools版本（确保与安装版本一致）
+            sed -i "s/^android.build_tools_version =.*/android.build_tools_version = 34.0.0/" buildozer.spec
+            # 指定Android平台版本
+            sed -i "s/^android.sdk_version =.*/android.sdk_version = 34/" buildozer.spec
+            # 自动接受许可证
+            sed -i "s/^android.accept_sdk_license =.*/android.accept_sdk_license = True/" buildozer.spec
+            # 禁用忽略Build-Tools版本（强制使用指定版本）
+            sed -i "s/^android.ignore_build_tools_version =.*/android.ignore_build_tools_version = False/" buildozer.spec
+          else
+            echo "错误：未找到buildozer.spec文件，请确保项目根目录存在该文件"
+            exit 1
+          fi
+
+      # 11. 清理缓存并构建Android应用
+      - name: Build Android app with Buildozer
+        run: |
+          # 清理旧构建缓存（避免历史配置干扰）
+          rm -rf ~/.buildozer
+          # 执行构建（-v显示详细日志，便于调试）
+          buildozer -v android debug
+
+      # 12. 上传构建产物（可选，用于保存APK）
+      - name: Upload build artifact
+        if: success()  # 仅当构建成功时执行
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-app
+          path: bin/*.apk  # Buildozer默认输出路径
