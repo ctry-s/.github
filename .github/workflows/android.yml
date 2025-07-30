@@ -16,10 +16,16 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: Set Java version
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential openjdk-17-jdk unzip wget libffi-dev libssl-dev zlib1g-dev
+        sudo apt install -y build-essential openjdk-11-jdk unzip wget libffi-dev libssl-dev zlib1g-dev
         pip install --upgrade pip
         pip install Cython==0.29.36 buildozer
 
@@ -30,7 +36,10 @@ jobs:
         wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk.zip
         unzip -q sdk.zip -d cmdline-tools
         mv cmdline-tools/cmdline-tools cmdline-tools/latest
+        rm sdk.zip
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;27.3.13750724"
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.3.13750724" >> $GITHUB_ENV
 
     - name: Accept licenses
       run: |
@@ -41,6 +50,10 @@ jobs:
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
         $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+    - name: Set permissions
+      run: |
+        chmod -R 777 /home/runner/work/Warehouse/Warehouse/.buildozer
 
     - name: Build APK
       run: |
