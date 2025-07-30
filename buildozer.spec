@@ -7,7 +7,6 @@ source.include_exts = py,yml
 version = 1.0
 requirements = python3,kivy,jmcomic,requests
 orientation = portrait
-osx.python_version = 3
 fullscreen = 0
 android.api = 34
 android.sdk = 34
@@ -15,7 +14,6 @@ android.ndk = 25b
 android.ndk_api = 34
 android.accept_sdk_license = True
 android.build_tools_version = 34.0.0
-android.sdk_dir = C:\\Users\\15PRO\\android-sdk
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 
 [buildozer]
