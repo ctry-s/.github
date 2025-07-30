@@ -10,6 +10,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 确保完整检出仓库
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -21,7 +23,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
+          # 移除 cache: 'gradle'，因为这不是标准的 Gradle 项目
 
       - name: Clean previous SDK installation
         run: |
