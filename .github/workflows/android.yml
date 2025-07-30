@@ -9,58 +9,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Set Java version
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential openjdk-11-jdk unzip wget libffi-dev libssl-dev zlib1g-dev
-        pip install --upgrade pip
-        pip install Cython==0.29.36 buildozer
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential unzip wget libffi-dev libssl-dev zlib1g-dev
 
-    - name: Install Android SDK
-      run: |
-        mkdir -p $HOME/android-sdk
-        cd $HOME/android-sdk
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk.zip
-        unzip -q sdk.zip -d cmdline-tools
-        mv cmdline-tools/cmdline-tools cmdline-tools/latest
-        rm sdk.zip
-        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;27.3.13750724"
-        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.3.13750724" >> $GITHUB_ENV
+      - name: Install Buildozer and dependencies
+        run: |
+          pip install --upgrade pip
+          pip install Cython==0.29.36 buildozer
 
-    - name: Accept licenses
-      run: |
-        mkdir -p $ANDROID_HOME/licenses
-        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > $ANDROID_HOME/licenses/android-sdk-license
+      - name: Clean SDK cache
+        run: |
+          rm -rf $HOME/android-sdk
+          mkdir -p $HOME/android-sdk
 
-    - name: Install Android packages
-      run: |
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+      - name: Install Android SDK
+        run: |
+          cd $HOME/android-sdk
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d .
+          mv cmdline-tools cmdline-tools-latest
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools-latest/* cmdline-tools/latest/
+          rm -rf cmdline-tools-latest
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_ENV
 
-    - name: Set permissions
-      run: |
-        chmod -R 777 /home/runner/work/Warehouse/Warehouse/.buildozer
+      - name: Accept SDK licenses
+        run: |
+          mkdir -p $ANDROID_HOME/licenses
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > $ANDROID_HOME/licenses/android-sdk-license
+          yes | sdkmanager --licenses
 
-    - name: Build APK
-      run: |
-        buildozer -v android debug
+      - name: Install Android components
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: jmcomic-apk
-        path: bin/*.apk
+      - name: Build with Buildozer
+        run: |
+          buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-app
+          path: bin/*.apk
