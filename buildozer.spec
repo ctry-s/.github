@@ -15,7 +15,7 @@ android.ndk = 25b
 android.ndk_api = 34
 android.accept_sdk_license = True
 android.build_tools_version = 34.0.0
-android.sdk_dir = $HOME/android-sdk
+android.sdk_dir = C:\\Users\\15PRO\\android-sdk
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 
 [buildozer]
